@@ -69,30 +69,34 @@ class ReadingEntry:
             return f"{self.current_part} (Ongoing)"
         return f"{self.current_part}/{self.total_parts}"
 
-st.set_page_config(page_title="Reading Tracker", layout="wide")
+st.set_page_config(page_title="Reading Tracker", layout="centered")
 st.markdown("""
     <style>
-        .main {
-            background-color: #121212;
-            color: #FFFFFF;
+        body {
+            background-color: #0f1117;
+            color: white;
         }
         .block-container {
-            padding: 2rem;
+            padding-top: 2rem;
+        }
+        .stTextInput input, .stSelectbox div, .stNumberInput input {
+            background-color: #1e1e1e;
+            color: white;
+            border-radius: 6px;
         }
         .stButton > button {
             background-color: #333333;
             color: white;
             border-radius: 0.5rem;
         }
-        .stTextInput input, .stSelectbox div {
-            background-color: #1e1e1e;
-            color: white;
+        .stSidebar > div {
+            background-color: #1a1d24;
         }
     </style>
 """, unsafe_allow_html=True)
 
 st.sidebar.title("📚 Reading Tracker")
-st.sidebar.caption("Track your readings smartly")
+st.sidebar.subheader("🔐 Account Access")
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -100,46 +104,46 @@ if "username" not in st.session_state:
     st.session_state.username = ""
 
 if not st.session_state.logged_in:
-    st.sidebar.subheader("🔐 Login or Register")
-    username = st.sidebar.text_input("Username")
-    password = st.sidebar.text_input("Password", type="password")
-    auth_action = st.sidebar.radio("Action", ["Login", "Register"])
-
-    if st.sidebar.button("Submit"):
-        if auth_action == "Login":
-            if verify_user(username, password):
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.success("Logged in successfully!")
+    with st.sidebar:
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        auth_action = st.radio("Select Action", ["Login", "Register"])
+        if st.button("Proceed"):
+            if auth_action == "Login":
+                if verify_user(username, password):
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.success("✅ Logged in successfully")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid credentials.")
             else:
-                st.error("Incorrect username or password.")
-        else:
-            if create_user(username, password):
-                st.success("Account created. Please log in.")
-            else:
-                st.error("Username already exists.")
+                if create_user(username, password):
+                    st.success("✅ Account created. Please log in.")
+                else:
+                    st.error("⚠️ Username already exists.")
     st.stop()
 
-page = st.sidebar.selectbox("Navigate", ["Add New Reading", "View & Update", "Export to CSV"])
+page = st.sidebar.radio("🔎 Navigation", ["➕ Add Reading", "📋 View & Update", "📤 Export CSV"])
 reading_list = load_readings(st.session_state.username)
 
-if page == "Add New Reading":
-    st.header("➕ Add New Reading")
+if page == "➕ Add Reading":
+    st.header("➕ Add New Reading Entry")
     with st.form("add_form"):
         title = st.text_input("Title")
         type_ = st.selectbox("Type", ["comic", "manhwa", "manhua", "book"])
-        total_input = st.text_input("Total parts (leave blank if ongoing)")
-        submitted = st.form_submit_button("Add")
+        total_input = st.text_input("Total chapters/episodes (leave blank if ongoing)")
+        submitted = st.form_submit_button("Add Entry")
         if submitted and title:
             total_parts = int(total_input) if total_input.strip() else None
             entry = ReadingEntry(title=title, type=type_, total_parts=total_parts)
             save_reading(st.session_state.username, entry)
-            st.success("Added successfully!")
-            st.experimental_rerun()
+            st.success("✅ Entry added.")
+            st.rerun()
 
-elif page == "View & Update":
-    st.header("📂 View, Filter & Update Progress")
-    filter_type = st.selectbox("Filter by type", ["All", "comic", "manhwa", "manhua", "book"])
+elif page == "📋 View & Update":
+    st.header("📖 View and Update Your Readings")
+    filter_type = st.selectbox("Filter by Type", ["All", "comic", "manhwa", "manhua", "book"])
     sort_by = st.selectbox("Sort by", ["Title", "Type", "Progress"])
 
     filtered_list = reading_list
@@ -154,30 +158,31 @@ elif page == "View & Update":
         filtered_list.sort(key=lambda x: (x.current_part / (x.total_parts or 1)), reverse=True)
 
     if filtered_list:
-        selected = st.selectbox("Select to update:", filtered_list, format_func=lambda r: f"{r.title} ({r.type})")
-        new_progress = st.number_input("New progress", value=selected.current_part, min_value=0)
-        if st.button("Update"):
+        selected = st.selectbox("Select Entry to Update", filtered_list, format_func=lambda r: f"{r.title} ({r.type})")
+        new_progress = st.number_input("Update Progress", value=selected.current_part, min_value=0)
+        if st.button("Save Update"):
             selected.current_part = new_progress
             save_reading(st.session_state.username, selected)
-            st.success("Updated.")
-            st.experimental_rerun()
+            st.success("🔄 Progress updated.")
+            st.rerun()
 
-    st.subheader("📋 Reading List")
+    st.markdown("---")
+    st.subheader("📃 Your Reading List")
     if filtered_list:
         for entry in filtered_list:
             st.markdown(f"**{entry.title}** [{entry.type}] — `{entry.get_status()}`")
     else:
-        st.warning("No data to display.")
+        st.info("No entries to display.")
 
-elif page == "Export to CSV":
-    st.header("📤 Export Reading List")
+elif page == "📤 Export CSV":
+    st.header("📤 Export Your Reading Data")
     if reading_list:
         df = pd.DataFrame([vars(e) for e in reading_list])
         st.download_button(
             label="Download as CSV",
-            data=df.to_csv(index=False).encode('utf-8'),
+            data=df.to_csv(index=False).encode("utf-8"),
             file_name="reading_list.csv",
             mime="text/csv"
         )
     else:
-        st.warning("Your list is empty. Nothing to export.")
+        st.info("Nothing to export yet.")
