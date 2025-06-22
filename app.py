@@ -95,34 +95,39 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.sidebar.title("📚 Reading Tracker")
-st.sidebar.subheader("🔐 Account Access")
-
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
     st.session_state.username = ""
 
 if not st.session_state.logged_in:
-    with st.sidebar:
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        auth_action = st.radio("Select Action", ["Login", "Register"])
-        if st.button("Proceed"):
-            if auth_action == "Login":
-                if verify_user(username, password):
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    st.success("✅ Logged in successfully")
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid credentials.")
+    st.title("🔐 Login or Register")
+    st.write("Please enter your credentials below.")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    auth_action = st.radio("Select Action", ["Login", "Register"])
+    if st.button("Proceed"):
+        if auth_action == "Login":
+            if verify_user(username, password):
+                st.session_state.logged_in = True
+                st.session_state.username = username
+                st.success("✅ Logged in successfully")
+                st.rerun()
             else:
-                if create_user(username, password):
-                    st.success("✅ Account created. Please log in.")
-                else:
-                    st.error("⚠️ Username already exists.")
+                st.error("❌ Invalid credentials.")
+        else:
+            if create_user(username, password):
+                st.success("✅ Account created. Please log in.")
+            else:
+                st.error("⚠️ Username already exists.")
     st.stop()
+
+st.sidebar.title("📚 Reading Tracker")
+st.sidebar.markdown(f"👋 Hello, **{st.session_state.username}**")
+if st.sidebar.button("🚪 Logout"):
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    st.rerun()
 
 page = st.sidebar.radio("🔎 Navigation", ["➕ Add Reading", "📋 View & Update", "📤 Export CSV"])
 reading_list = load_readings(st.session_state.username)
